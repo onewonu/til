@@ -248,8 +248,163 @@ _하나의 큰 인터페이스의 의존성 문제_
 
 # DIP
 _고 수준 모듈은 저수준 모듈에 의존하지 않아야 하며, 모든 의존성은 추상화에 의존해야 한다._
+### 1. 추상에 의존하는 시스템
+> '유연성이 극대화된 시스템' 이란 소스 코드 의존성이 추상에 의존하며 구체에는 의존하지 않는 시스템이다. 자바와 같은 정적 타입 언어에서 이말은 use, import, include 구문은 오직 인터페이스나 추상 클래스 같은 추상적인 선언만을 참조해야 한다는 뜻이다. 구체적인 대상에는 절대로 의존해서는 안된다.  
+> ...  
+> 이 아이디어를 규칙으로 보기는 확실히 비현실적이다. 소프트웨어 시스템이라면 구체적인 많은 장치에 반드시 의존하기 때문이다.  
+> ...  
+> 반면 String 클래스는 매우 안정적이다.  
+> ...  
+> DIP를 논할 때 운영체제나 플랫폼 같이 안정성이 보장된 환경에 대해서는 무시하는 편이다.  
+> ...   
+> 우리가 의존하지 않도록 피하고자 하는 것은 바로 변동성이 큰 구체적인 요소다.
 
+_추상에 의존_
 
+DIP 의 핵심은 구체적인 구현에 의존하지 않고 추상화된 인터페이스나 추상 클래스에 의존하는 시스템을 구축하는 것이다. 구체적인 클래스에 대한 의존성을 피함으로써, 시스템은 더 유연해지고 유지보수하기 쉬워진다.
+
+**유연성이 극대화된 시스템** 이란 소스 코드 의존성이 추상에 의존하며, 구체적인 구현에 결박되지 않는 시스템으로, 자바와 같은 정적 타입 언어에서는클래스가 구체적인 클래스가 아닌, 인터페이스나 추상 클래스를 참조하는 형태.
+
+클래스가 다른 클래스의 구체적인 구현에 의존하면, 그 구현이 변경될 때마다 의존하는 클래스도 변경되어야 하는 반면, 추상화된 인터페이스에 의존한다면, 구체적인 구현이 바뀌더라도 인터페이스만 동일하다면 다른 클래스에는 영향을 주지 않으므로 시스템의 유연성이 높아진다.
+
+<br>
+
+_안정적인 의존_
+
+자주 변경되거나 불안정한 코드에 의존할 경우, 그 코드가 변경될 때마다 시스템 전체에 영향을 미치게 된다. 따라서 구체적인 구현은 변동성이 크기 때문에, 시스템의 안정성과 확장성을 해칠 수 있다.  
+하지만, 안정적인 클래스나 운영체제와 같은 환경은 예외적으로 DIP 원칙을 완화할 수 있는데, 자바의 String 클래스는 매우 안정적이고 변동성이 거의 없기 때문에 이런 안정적인 구현체에 의존하는 것은 문제가 되지 않는다.
+### 2. 안정된 추상화와 변동성
+> 1. **변동성이 큰 구체 클래스를 참조하지 말라.**
+> 	* 이 규칙은 객체 생성 방식을 강하게 제약하며, 일반적으로 추상 팩토리를 사용하도록 강제한다.
+> 2. **변동성이 큰 구체 클래스로부터 파생하지 말라.**
+> 	* 정적 타입 언어에서 상속은 소스 코드에 존재하는 모든 관계 중에서 가장 강력한 동시에 뻣뻣해서 변경하기 어렵다. 따라서 상속은 아주 신중하게 사용해야 한다.
+> 3. **구체 함수를 오버라이드 하지 말라.**
+> 	* 구체 함수는 소스 코드 의존성을 필요로 한다. 따라서 구체 함수를 오버라이드 하면 이러한 의존성을 제거할 수 없게 되며, 실제로는 그 의존성을 상속하게 된다.
+> 4. **구체적이며 변동성이 크다면 절대로 그 이름을 언급하지 말라.**
+### 3. 추상 팩토리와 구체 컴포넌트
+
+<img src="/image/p.94%20DIP%20-%20Factory.png" width="1025" height="645" alt="p.94 DIP - Factory"/> 
+
+<br>
+<br>
+
+<details>
+<summary>Code</summary>
+
+```java
+public interface Service {
+    void execute();
+}
+
+public class ConcreteAImpl implements Service {
+    @Override
+    public void execute() {
+        System.out.println("ConcreteAImpl: Executing Service...");
+    }
+}
+
+public class ConcreteBImpl implements Service {
+    @Override
+    public void execute() {
+        System.out.println("ConcreteBImpl: Executing Service...");
+    }
+}
+```
+
+```java
+public interface ServiceFactory {
+    Service makeSvc();
+}
+
+public class ServiceFactoryImpl implements ServiceFactory {
+    private String serviceType;
+
+    public ServiceFactoryImpl(String serviceType) {
+        this.serviceType = serviceType;
+    }
+
+    @Override
+    public Service makeSvc() {
+        if (serviceType.equalsIgnoreCase("A")) {
+            return new ConcreteAImpl(); 
+        } else if (serviceType.equalsIgnoreCase("B")) {
+            return new ConcreteBImpl();
+        } else {
+            throw new IllegalArgumentException("Unknown service type: " + serviceType);
+        }
+    }
+}
+```
+
+```java
+public class Application {
+    private ServiceFactory serviceFactory;
+
+    public Application(ServiceFactory serviceFactory) {
+        this.serviceFactory = serviceFactory;
+    }
+
+    public void run() {
+        Service service = serviceFactory.makeSvc();
+        service.execute();
+    }
+
+    public static void main(String[] args) {
+        ServiceFactory factoryA = new ServiceFactoryImpl("A");
+        Application appA = new Application(factoryA);
+        appA.run(); 
+
+        ServiceFactory factoryB = new ServiceFactoryImpl("B");
+        Application appB = new Application(factoryB);
+        appB.run(); 
+    }
+}
+```
+</details>
+
+> Application은 Service인터페이스를 통해 ConcreteImpl을 사용하지만, Application에서는 어떤 식으로든 ConcreteImpl인스턴스를 생성해야 한다.   
+> ConcreteImpl에 대해 소스 코드 의존성을 만들지 않으면서 이 목적을 이루기 위해 Application은 ServiceFactory인터페이스의 makeSvc메서드를 호출한다.   
+> 이 메서드는 ServiceFactory로 부터 파생된 ServiceFactoryImpl에서 구현된다. 그리고 ServiceFactoryImpl 구현체가 ConcreteImpl 의 인스턴스를 생성한 후 Service 타입으로 반환된다.   
+> ...  
+> 곡선은 아키텍처 경계를 뜻한다.   
+> ...  
+> 곡선은 시스템을 두가지 컴포넌트로 분리한다. 하나는 추상 컴포넌트이며, 다른 하나는 구체 컴포넌트다.   
+> 추상 컴포넌트는 애플리케이션의 모든 고수준 업무 규칙을 포함한다. 구체 컴포넌트는 업무 규칙을 다루기 위해 필요한 모든 세부사항을 포함한다.  
+> 제어흐름은 소스 코드 의존성과는 정반대 방향으로 곡선을 가로지른다는 점에 주목하자. 다시 말해 소스 코드 의존성은 제어흐름과는 반대 방향으로 역전된다.  
+> ...  
+> (옮긴이)ServiceFactoryImpl 구체 클래스가 ConcreteImpl 구체 클래스에 의존한다.  
+> ...
+> DIP 위배를 모드 없앨 수는 없다. 하지만 DIP를 위배하는 클래스들은 적은 수의 구체 컴포넌트 내부로 모을 수 있고, 이를 통해 시스템의 나머지 부분과는 분리할 수 있다.
+> ...  
+> 곡선은 이후의 장에서는 아키텍처 경계가 될 것이다. 그리고 의존성은 이 곡선을 경계로, 더 추상적인 엔티티가 있는 쪽으로만 향한다. 추후 이 규칙은 의존성 규칙이라 부를 것이다.
+
+_추상 팩토리_
+
+팩토리 인터페이스를 통해 서비스의 인스턴스 생성 메커니즘을 추상화.   
+구체적인 클래스의 생성은 팩토리 구현 내부에서 이루어지며, 이 과정을 통해 시스템의 나머지 부분은 구체적인 클래스의 구현으로부터 독립적이게 되어 의존성을 팩토리 내부로 한정함으로써 구현 변경에 따른 영향을 최소화.
+
+<br>
+
+_구체 컴포넌트의 제어 흐름과 의존성 역전_
+
+일반적인 설계에서는 저수준 모듈이 고수준 모듈에 의존하거나 제어를 전달받지만, DIP 를 적용하면 의존성의 방향이 역전되어 고수준 모듈이 추상화된 인터페이스에 의존하게 된다.
+
+제어 흐름은 구체적인 구현체에서 시작하여, **추상화된 인터페이스** 로 향하는데, 고수준 모듈이 저수준 모듈의 구체적인 구현을 직접 호출하지 않고 인터페이스를 통해 제어 흐름이 이루어지도록 설계된다는 것을 의미한다.
+이 과정에서 의존성은 제어 흐름의 반대 방향으로 움직이며, 고수준 모듈이 저수준 모듈에 의존하지 않고, 오히려 저수준 모듈이 추상화된 고수준 모듈에 의존하게 된다.
+
+<br>
+
+_DIP 위배의 허용과 관리_
+
+모든 시스템에서 DIP 를 완벽하게 준수하는 것은 현실적으로 어려울 수 있는데, 특히 구체적인 컴포넌트 내부에서 DIP 를 위반하는 경우가 있다.
+ServiceFactoryImpl 과 ConcreteImpl 같은 구체적인 클래스들 사이에는 여전히 의존성이 존재할 수 있다. 하지만 이러한 의존성은 시스템의 특정 구체적인 부분에 국한시키고, 고수준 모듈과 분리하여 관리하는 것이 중요하다.
+
+<br>
+
+_DIP 와 아키텍처 경계_
+
+DIP 는 아키텍처의 경계를 설정하고, 이 경계를 넘어서 의존성이 흐르지 않도록 하는 중요한 역할을 한다.   
+구체 컴포넌트와 추상 컴포넌트 사이의 경계를 명확히 나누고, 의존성은 항상 추상화된 엔티티 쪽으로만 향하게 하여 아키텍처의 안정성을 유지하고, 시스템을 더 유연하게 확장할 수 있도록 돕는다.
 
 # Ref:
 Clean Architecture (p.62~98) - Robert C. Martin
